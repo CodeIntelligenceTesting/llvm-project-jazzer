@@ -599,10 +599,12 @@ ATTRIBUTE_NOINLINE bool Fuzzer::ExecuteCallback(const uint8_t *Data,
     CBRes = CB(Data, Size);
     RunningUserCallback = false;
     UnitStopTime = system_clock::now();
-    assert(CBRes == 0 || CBRes == -1);
+    assert(CBRes == 0 || CBRes == -1 || CBRes == -2);
     HasMoreMallocsThanFrees = AllocTracer.Stop();
   }
   CurrentUnitSize = 0;
+  if (CBRes == -2)
+    ReturnRequested = true;
   return CBRes == 0;
 }
 
@@ -722,6 +724,8 @@ void Fuzzer::MutateAndTestOne() {
   for (int i = 0; i < Options.MutateDepth; i++) {
     if (TotalNumberOfRuns >= Options.MaxNumberOfRuns)
       break;
+    if (ReturnRequested)
+      return;
     MaybeExitGracefully();
     size_t NewSize = 0;
     if (II.HasFocusFunction && !II.DataFlowTraceForFocusFunction.empty() &&
@@ -787,11 +791,15 @@ void Fuzzer::ReadAndExecuteSeedCorpora(std::vector<SizedFile> &CorporaFiles) {
   // Test the callback with empty input and never try it again.
   uint8_t dummy = 0;
   ExecuteCallback(&dummy, 0);
+  if (ReturnRequested)
+    return;
 
   if (CorporaFiles.empty()) {
     Printf("INFO: A corpus is not provided, starting from an empty corpus\n");
     Unit U({'\n'}); // Valid ASCII input.
     RunOne(U.data(), U.size());
+    if (ReturnRequested)
+      return;
   } else {
     Printf("INFO: seed corpus: files: %zd min: %zdb max: %zdb total: %zdb"
            " rss: %zdMb\n",
@@ -814,6 +822,8 @@ void Fuzzer::ReadAndExecuteSeedCorpora(std::vector<SizedFile> &CorporaFiles) {
       CheckExitOnSrcPosOrItem();
       TryDetectingAMemoryLeak(U.data(), U.size(),
                               /*DuringInitialCorpusExecution*/ true);
+      if (ReturnRequested)
+        return;
     }
   }
 
@@ -847,6 +857,8 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
            MD.GetRand());
   TPC.SetFocusFunction(FocusFunctionOrAuto);
   ReadAndExecuteSeedCorpora(CorporaFiles);
+  if (ReturnRequested)
+    return;
   DFT.Clear();  // No need for DFT any more.
   TPC.SetPrintNewPCs(Options.PrintNewCovPcs);
   TPC.SetPrintNewFuncs(Options.PrintNewCovFuncs);
@@ -887,6 +899,9 @@ void Fuzzer::Loop(std::vector<SizedFile> &CorporaFiles) {
     MutateAndTestOne();
 
     PurgeAllocator();
+
+    if (ReturnRequested)
+      return;
   }
 
   PrintStats("DONE  ", "\n");
