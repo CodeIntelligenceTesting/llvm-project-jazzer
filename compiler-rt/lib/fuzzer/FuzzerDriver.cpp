@@ -916,7 +916,7 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
            F->secondsSinceProcessStartUp());
   F->PrintFinalStats();
 
-  exit(0);  // Don't let F destroy itself.
+  return 0;
 }
 
 extern "C" ATTRIBUTE_INTERFACE int
