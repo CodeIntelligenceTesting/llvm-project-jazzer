@@ -431,6 +431,9 @@ macro(construct_compiler_rt_default_triple)
           "Default triple for which compiler-rt runtimes will be built.")
   endif()
 
+  message(STATUS CMAKE_C_COMPILER_TARGET=\"${CMAKE_C_COMPILER_TARGET}\")
+  message(STATUS LLVM_TARGET_TRIPLE=\"${LLVM_TARGET_TRIPLE}\")
+  message(STATUS COMPILER_RT_DEFAULT_TARGET_TRIPLE=\"${COMPILER_RT_DEFAULT_TARGET_TRIPLE}\")
   string(REPLACE "-" ";" LLVM_TARGET_TRIPLE_LIST ${COMPILER_RT_DEFAULT_TARGET_TRIPLE})
   list(GET LLVM_TARGET_TRIPLE_LIST 0 COMPILER_RT_DEFAULT_TARGET_ARCH)
 
